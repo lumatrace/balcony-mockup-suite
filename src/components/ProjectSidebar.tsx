@@ -53,6 +53,16 @@ function handleTileDrop(
   onDragTargetChange(null)
 }
 
+function handleTileDragState(
+  event: DragEvent<HTMLElement>,
+  surfaceId: SurfaceId,
+  onDragTargetChange: (surfaceId: SurfaceId | null) => void,
+) {
+  event.preventDefault()
+  event.stopPropagation()
+  onDragTargetChange(surfaceId)
+}
+
 function renderPreview(mediaAsset: RuntimeMediaAsset | undefined) {
   if (!mediaAsset) {
     return <div className="slot-empty-mark" aria-hidden="true">+</div>
@@ -158,16 +168,8 @@ export function ProjectSidebar({
                     onOpenFilePicker(surface.id)
                   }
                 }}
-                onDragEnter={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onDragTargetChange(surface.id)
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onDragTargetChange(surface.id)
-                }}
+                onDragEnter={(event) => handleTileDragState(event, surface.id, onDragTargetChange)}
+                onDragOver={(event) => handleTileDragState(event, surface.id, onDragTargetChange)}
                 onDragLeave={() => onDragTargetChange(null)}
                 onDrop={(event) => handleTileDrop(event, surface.id, onDropFiles, onDragTargetChange)}
               >
@@ -181,6 +183,12 @@ export function ProjectSidebar({
                     if (!assignment) {
                       onOpenFilePicker(surface.id)
                     }
+                  }}
+                  onDragEnter={(event) => handleTileDragState(event, surface.id, onDragTargetChange)}
+                  onDragOver={(event) => handleTileDragState(event, surface.id, onDragTargetChange)}
+                  onDragLeave={() => onDragTargetChange(null)}
+                  onDrop={(event) => {
+                    handleTileDrop(event as unknown as DragEvent<HTMLDivElement>, surface.id, onDropFiles, onDragTargetChange)
                   }}
                 >
                   <div className="slot-preview">

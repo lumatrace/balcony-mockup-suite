@@ -221,7 +221,7 @@ function WelcomePage({
           <div className="welcome-actions">
             <button type="button" className="welcome-action-button" onClick={onGoDesign}>
               <strong>I Want To Design It</strong>
-              <span>Open the mockup suite and start mapping</span>
+              <span>Open the design board and start mapping</span>
             </button>
 
             <button
@@ -422,7 +422,7 @@ export function App() {
       setNeedsResubmitPageId(null)
       setBuilderSubmissionTone(result.warning ? 'neutral' : 'success')
       setBuilderSubmissionMessage(
-        result.warning ?? 'Submission sent. We received the secure ZIP link and can start mapping from here.',
+        result.warning ?? 'Submission received. Your media package is in and ready for mapping.',
       )
     } catch (error) {
       setBuilderSubmissionTone('error')
@@ -460,7 +460,7 @@ export function App() {
 
       setZipSubmissionTone(result.warning ? 'neutral' : 'success')
       setZipSubmissionMessage(
-        result.warning ?? 'ZIP submitted. We received the secure download link and can take it from here.',
+        result.warning ?? 'ZIP received. Your files are in and ready for design.',
       )
     } catch (error) {
       setZipSubmissionTone('error')

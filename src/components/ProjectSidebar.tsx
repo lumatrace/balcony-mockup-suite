@@ -290,7 +290,7 @@ export function ProjectSidebar({
         </label>
 
         <label className="outline-toggle">
-          <span>Hue Cycle</span>
+          <span>Color Cycle</span>
           <input
             type="checkbox"
             checked={slatStrokeSettings.hueCycleEnabled}

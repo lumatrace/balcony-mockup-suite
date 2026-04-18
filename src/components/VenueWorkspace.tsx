@@ -27,6 +27,7 @@ type VenueWorkspaceProps = {
 const lockedSlatStrokeWidth = 6
 const lockedSlatStrokeFeather = 4
 const defaultSlatHueCycleSpeed = 1
+const defaultSlatStrokeColor = '#c992ff'
 const defaultActiveLayoutId: LayoutId = 'layout-1'
 const layoutDefinitions: Array<{ id: LayoutId; label: string }> = [{ id: 'layout-1', label: 'Layout 1' }]
 const lockedWallProjectionSettings: WallProjectionSettings = {
@@ -44,10 +45,14 @@ const venueLabels: Record<LiveVenueId, string> = {
 
 function normalizeSlatStrokeSettings(settings?: Partial<SlatStrokeSettings>): SlatStrokeSettings {
   const safeHueCycleSpeed = Math.min(3, Math.max(0.2, settings?.hueCycleSpeed ?? defaultSlatHueCycleSpeed))
+  const normalizedColor =
+    !settings?.color || settings.color.toLowerCase() === '#ffffff'
+      ? defaultSlatStrokeColor
+      : settings.color
 
   return {
     enabled: settings?.enabled ?? false,
-    color: settings?.color ?? '#ffffff',
+    color: normalizedColor,
     hueCycleEnabled: settings?.hueCycleEnabled ?? false,
     hueCycleSpeed: safeHueCycleSpeed,
     width: lockedSlatStrokeWidth,
@@ -57,7 +62,7 @@ function normalizeSlatStrokeSettings(settings?: Partial<SlatStrokeSettings>): Sl
 
 const defaultSlatStrokeSettings: SlatStrokeSettings = {
   enabled: false,
-  color: '#ffffff',
+  color: defaultSlatStrokeColor,
   hueCycleEnabled: false,
   hueCycleSpeed: defaultSlatHueCycleSpeed,
   width: lockedSlatStrokeWidth,

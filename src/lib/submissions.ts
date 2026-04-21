@@ -1,3 +1,4 @@
+import JSZip from 'jszip'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectSnapshot } from './projectStorage'
 
@@ -177,6 +178,100 @@ function formatVenueDraftId(venueId: BuilderVenueId) {
   return `__draft__::${venueId}`
 }
 
+async function createLocalBuilderZip(projectName: string) {
+  const zip = new JSZip()
+  const includedVenues: string[] = []
+  const venueSummaries: Array<Record<string, unknown>> = []
+  let totalMediaCount = 0
+
+  for (const venue of builderVenueDefinitions) {
+    const snapshot = await loadProjectSnapshot(formatVenueDraftId(venue.id))
+
+    if (!snapshot) {
+      continue
+    }
+
+    const hasMedia = snapshot.mediaRecords.length > 0
+    const hasAssignments = snapshot.project.layouts.some((layout) => layout.assignments.length > 0)
+
+    if (!hasMedia && !hasAssignments) {
+      continue
+    }
+
+    includedVenues.push(venue.label)
+
+    const venueFolder = zip.folder(`venues/${sanitizeSegment(venue.label)}`)
+
+    if (!venueFolder) {
+      continue
+    }
+
+    venueFolder.file('project.json', JSON.stringify(snapshot.project, null, 2))
+
+    snapshot.mediaRecords.forEach((mediaRecord) => {
+      totalMediaCount += 1
+      const safeFilename = `${mediaRecord.id}-${sanitizeSegment(mediaRecord.filename) || 'asset'}`
+      venueFolder.file(`media/${safeFilename}`, mediaRecord.blob)
+    })
+
+    venueSummaries.push({
+      id: venue.id,
+      label: venue.label,
+      layoutCount: snapshot.project.layouts.length,
+      mediaCount: snapshot.mediaRecords.length,
+      assignmentCount: snapshot.project.layouts.reduce(
+        (count, layout) => count + layout.assignments.length,
+        0,
+      ),
+    })
+  }
+
+  if (totalMediaCount === 0) {
+    throw new Error('Add at least one image or video before downloading the mapping package.')
+  }
+
+  zip.file(
+    'submission.json',
+    JSON.stringify(
+      {
+        type: 'builder-submission',
+        projectName,
+        createdAt: new Date().toISOString(),
+        includedVenues,
+        totalMediaCount,
+        venues: venueSummaries,
+      },
+      null,
+      2,
+    ),
+  )
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  })
+
+  return {
+    blob,
+    filename: `${sanitizeSegment(projectName) || 'balcony-mockup'}-${createTimestampSlug()}.zip`,
+    includedVenues,
+    totalMediaCount,
+  }
+}
+
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const objectUrl = window.URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = filename
+  anchor.rel = 'noopener'
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000)
+}
+
 export async function createBuilderSubmissionArchive(
   projectName: string,
 ): Promise<BuilderSubmissionPackage> {
@@ -273,6 +368,17 @@ export async function createBuilderSubmissionArchive(
           ) ?? 0,
       })),
     },
+  }
+}
+
+export async function downloadBuilderProjectPackage(projectName: string) {
+  const archive = await createLocalBuilderZip(projectName)
+  triggerBrowserDownload(archive.blob, archive.filename)
+
+  return {
+    filename: archive.filename,
+    includedVenues: archive.includedVenues,
+    totalMediaCount: archive.totalMediaCount,
   }
 }
 

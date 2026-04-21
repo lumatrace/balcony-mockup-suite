@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import type { DragEvent, ReactNode } from 'react'
 import { VenueWorkspace } from './components/VenueWorkspace'
-import { submitBuilderProject, submitUploadedZip } from './lib/submissions'
+import { downloadBuilderProjectPackage, submitUploadedZip } from './lib/submissions'
 
 type VenueId = 'bar' | 'entrance' | 'exit' | 'stage'
 type AppPageId = 'welcome' | 'upload' | VenueId
@@ -413,21 +413,21 @@ export function App() {
     try {
       setIsBuilderSubmitting(true)
       setBuilderSubmissionTone('neutral')
-      setBuilderSubmissionMessage('Packaging your mapped media and uploading it now...')
+      setBuilderSubmissionMessage('Building your downloadable package now...')
 
       await new Promise((resolve) => window.setTimeout(resolve, 450))
-      const result = await submitBuilderProject(initialProjectName)
+      const result = await downloadBuilderProjectPackage(initialProjectName)
 
       setSubmittedPageId(currentPageId)
       setNeedsResubmitPageId(null)
-      setBuilderSubmissionTone(result.warning ? 'neutral' : 'success')
+      setBuilderSubmissionTone('success')
       setBuilderSubmissionMessage(
-        result.warning ?? 'Submission received. Your media package is in and ready for mapping.',
+        `Downloaded ${result.filename}. Upload that ZIP to your Dropbox or Google Drive request link to send it to Corey.`,
       )
     } catch (error) {
       setBuilderSubmissionTone('error')
       setBuilderSubmissionMessage(
-        error instanceof Error ? error.message : 'The mapping package could not be submitted.',
+        error instanceof Error ? error.message : 'The mapping package could not be downloaded.',
       )
     } finally {
       setIsBuilderSubmitting(false)
@@ -533,9 +533,9 @@ export function App() {
               ].join(' ')}
               disabled={isBuilderSubmitting}
               onClick={handleSubmitPage}
-              aria-label="Submit all media to be mapped."
+              aria-label="Download media package."
             >
-              {isBuilderSubmitting ? 'Submitting Mapping Package…' : 'Submit All Media To Be Mapped'}
+              {isBuilderSubmitting ? 'Downloading Media Package…' : 'Download Media Package'}
             </button>
 
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">

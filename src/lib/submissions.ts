@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectSnapshot } from './projectStorage'
+import { loadVenueAssetManifest } from './venueAssets'
 
 const builderVenueDefinitions = [
   { id: 'bar', label: 'Bar' },
@@ -107,6 +108,17 @@ function createTimestampSlug() {
   return new Date().toISOString().replace(/[:.]/g, '-')
 }
 
+function getFileExtension(filename: string) {
+  const match = filename.match(/(\.[a-z0-9]+)$/i)
+  return match?.[1] ?? ''
+}
+
+function createExportFilename(order: number, surfaceLabel: string, originalFilename: string) {
+  const safeSurfaceLabel = sanitizeSegment(surfaceLabel) || 'surface'
+  const extension = getFileExtension(originalFilename)
+  return `${String(order).padStart(2, '0')}-${safeSurfaceLabel}${extension}`
+}
+
 async function requestSignedUpload(filename: string, submissionType: UploadSubmissionType) {
   const response = await fetch('/api/submissions/create-upload-url', {
     method: 'POST',
@@ -186,6 +198,7 @@ async function createLocalBuilderZip(projectName: string) {
 
   for (const venue of builderVenueDefinitions) {
     const snapshot = await loadProjectSnapshot(formatVenueDraftId(venue.id))
+    const manifest = await loadVenueAssetManifest(venue.id)
 
     if (!snapshot) {
       continue
@@ -201,6 +214,16 @@ async function createLocalBuilderZip(projectName: string) {
     includedVenues.push(venue.label)
 
     const venueFolder = zip.folder(`venues/${sanitizeSegment(venue.label)}`)
+    const placementFolder = venueFolder?.folder('placements')
+    const unassignedFolder = venueFolder?.folder('unassigned-media')
+    const activeLayout =
+      snapshot.project.layouts.find((layout) => layout.id === snapshot.project.activeLayoutId) ??
+      snapshot.project.layouts[0]
+    const surfaceDefinitions = [...manifest.groupedSurfaces, ...manifest.surfaces]
+    const surfaceById = new Map(surfaceDefinitions.map((surface) => [surface.id, surface]))
+    const mediaById = new Map(snapshot.mediaRecords.map((mediaRecord) => [mediaRecord.id, mediaRecord]))
+    const placedMediaIds = new Set<string>()
+    const assignmentSummary: Array<Record<string, unknown>> = []
 
     if (!venueFolder) {
       continue
@@ -208,17 +231,74 @@ async function createLocalBuilderZip(projectName: string) {
 
     venueFolder.file('project.json', JSON.stringify(snapshot.project, null, 2))
 
-    snapshot.mediaRecords.forEach((mediaRecord) => {
-      totalMediaCount += 1
-      const safeFilename = `${mediaRecord.id}-${sanitizeSegment(mediaRecord.filename) || 'asset'}`
-      venueFolder.file(`media/${safeFilename}`, mediaRecord.blob)
-    })
+    activeLayout?.assignments
+      .slice()
+      .sort((left, right) => {
+        const leftOrder = surfaceById.get(left.surfaceId)?.tileOrder ?? 999
+        const rightOrder = surfaceById.get(right.surfaceId)?.tileOrder ?? 999
+        return leftOrder - rightOrder
+      })
+      .forEach((assignment, index) => {
+        const surface = surfaceById.get(assignment.surfaceId)
+        const mediaRecord = mediaById.get(assignment.mediaAssetId)
+
+        if (!surface || !mediaRecord || !placementFolder) {
+          return
+        }
+
+        totalMediaCount += 1
+        placedMediaIds.add(mediaRecord.id)
+
+        const exportFilename = createExportFilename(index + 1, surface.tileLabel, mediaRecord.filename)
+        placementFolder.file(exportFilename, mediaRecord.blob)
+
+        assignmentSummary.push({
+          surfaceId: surface.id,
+          surfaceLabel: surface.label,
+          exportedFilename: exportFilename,
+          originalFilename: mediaRecord.filename,
+          kind: mediaRecord.kind,
+        })
+      })
+
+    snapshot.mediaRecords
+      .filter((mediaRecord) => !placedMediaIds.has(mediaRecord.id))
+      .forEach((mediaRecord) => {
+        if (!unassignedFolder) {
+          return
+        }
+
+        totalMediaCount += 1
+        const safeFilename = `${mediaRecord.id}-${sanitizeSegment(mediaRecord.filename) || 'asset'}`
+        unassignedFolder.file(safeFilename, mediaRecord.blob)
+      })
+
+    venueFolder.file(
+      'placements.json',
+      JSON.stringify(
+        {
+          venue: venue.label,
+          layoutId: activeLayout?.id ?? null,
+          assignments: assignmentSummary,
+          unassignedMedia: snapshot.mediaRecords
+            .filter((mediaRecord) => !placedMediaIds.has(mediaRecord.id))
+            .map((mediaRecord) => ({
+              originalFilename: mediaRecord.filename,
+              mediaId: mediaRecord.id,
+              kind: mediaRecord.kind,
+            })),
+        },
+        null,
+        2,
+      ),
+    )
 
     venueSummaries.push({
       id: venue.id,
       label: venue.label,
       layoutCount: snapshot.project.layouts.length,
       mediaCount: snapshot.mediaRecords.length,
+      exportedPlacementCount: assignmentSummary.length,
       assignmentCount: snapshot.project.layouts.reduce(
         (count, layout) => count + layout.assignments.length,
         0,

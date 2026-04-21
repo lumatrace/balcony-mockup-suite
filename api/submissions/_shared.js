@@ -65,12 +65,12 @@ export async function sendSubmissionEmail({
 }) {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.RESEND_FROM_EMAIL
-  const toEmail = process.env.SUBMISSION_NOTIFICATION_EMAIL
+  const toEmail = process.env.SUBMISSION_NOTIFICATION_EMAIL || 'corey@lumatrace.net'
 
-  if (!apiKey || !fromEmail || !toEmail) {
+  if (!apiKey || !fromEmail) {
     return {
       emailSent: false,
-      warning: 'Submission saved, but email delivery is not configured yet.',
+      warning: 'Submission saved, but email delivery is not configured yet. Check your Resend API key and sender address.',
     }
   }
 
@@ -78,7 +78,7 @@ export async function sendSubmissionEmail({
   const venueList = includedVenues?.length ? includedVenues.join(', ') : 'ZIP upload handoff'
   const subject = `Balcony submission: ${projectName || originalFilename}`
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: fromEmail,
     to: [toEmail],
     subject,
@@ -98,6 +98,13 @@ export async function sendSubmissionEmail({
       </div>
     `,
   })
+
+  if (error) {
+    return {
+      emailSent: false,
+      warning: `Submission saved, but email delivery failed. ${error.message}`,
+    }
+  }
 
   return { emailSent: true }
 }

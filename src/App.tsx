@@ -511,8 +511,8 @@ export function App() {
 
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">
               <span className="hero-upload-guidance__eyebrow">Easy Handoff</span>
-              <p>1. Click Download Media Package.</p>
-              <p>2. Find the ZIP in your Downloads folder and add it to the Dropbox window that opens.</p>
+              <p>Click the purple button above.</p>
+              <p>We’ll automatically zip your files, relabel them for you, and open the Dropbox window for drag and drop from Downloads.</p>
             </section>
 
             {builderSubmissionMessage ? (

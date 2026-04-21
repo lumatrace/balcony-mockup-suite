@@ -518,12 +518,9 @@ export function App() {
             </button>
 
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">
-              <span className="hero-upload-guidance__eyebrow">Upload Specs</span>
-              <p>
-                Videos work best as H.264 MP4 at 1920 x 1080. Use 2400 x 1080 for the stage video wall.
-                JPEG and PNG images work too.
-              </p>
-              <p>After download, upload the ZIP to Corey using the Dropbox link above.</p>
+              <span className="hero-upload-guidance__eyebrow">Easy Handoff</span>
+              <p>1. Click Download Media Package.</p>
+              <p>2. Find the ZIP in your Downloads folder and add it to the Dropbox window that opens.</p>
             </section>
 
             {builderSubmissionMessage ? (

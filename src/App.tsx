@@ -504,9 +504,9 @@ export function App() {
               ].join(' ')}
               disabled={isBuilderSubmitting}
               onClick={handleSubmitPage}
-              aria-label="Download media package."
+              aria-label="Send your design here."
             >
-              {isBuilderSubmitting ? 'Downloading Media Package…' : 'Download Media Package'}
+              {isBuilderSubmitting ? 'Sending Your Design…' : 'Send Your Design Here'}
             </button>
 
             <button

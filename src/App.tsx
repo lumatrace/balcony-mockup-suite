@@ -18,6 +18,7 @@ type VenuePage = {
 }
 
 const initialProjectName = 'Hard Rock Balcony v1'
+const clientUploadRequestUrl = 'https://www.dropbox.com/request/0vs9xzowv5enb2po6y8x'
 
 const welcomeSlides = [
   {
@@ -181,6 +182,10 @@ function BrandHeader({
   )
 }
 
+function openClientUploadRequest() {
+  window.open(clientUploadRequestUrl, '_blank', 'noopener,noreferrer')
+}
+
 function WelcomePage({
   onGoUpload,
   onGoDesign,
@@ -259,6 +264,7 @@ function UploadZipPage({
   statusTone,
   onBack,
   onOpenFilePicker,
+  onOpenUploadLink,
   onDropFiles,
   onDragActiveChange,
 }: {
@@ -268,6 +274,7 @@ function UploadZipPage({
   statusTone: 'neutral' | 'success' | 'error'
   onBack: () => void
   onOpenFilePicker: () => void
+  onOpenUploadLink: () => void
   onDropFiles: (files: FileList | null) => void
   onDragActiveChange: (active: boolean) => void
 }) {
@@ -283,11 +290,16 @@ function UploadZipPage({
       <BrandHeader
         eyebrow="Concierge Upload"
         title="Prepare One ZIP For Corey"
-        description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, send that ZIP through your Dropbox, Google Drive, or file request link."
+        description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, upload that ZIP through Corey’s Dropbox request link."
       >
-        <button type="button" className="welcome-back-button" onClick={onBack}>
-          Back To Welcome
-        </button>
+        <div className="welcome-inline-actions">
+          <button type="button" className="welcome-back-button" onClick={onOpenUploadLink}>
+            Open Dropbox Upload
+          </button>
+          <button type="button" className="welcome-back-button welcome-back-button--ghost" onClick={onBack}>
+            Back To Welcome
+          </button>
+        </div>
       </BrandHeader>
 
       <section className="upload-shell">
@@ -400,12 +412,13 @@ export function App() {
 
       await new Promise((resolve) => window.setTimeout(resolve, 450))
       const result = await downloadBuilderProjectPackage(initialProjectName)
+      openClientUploadRequest()
 
       setSubmittedPageId(currentPageId)
       setNeedsResubmitPageId(null)
       setBuilderSubmissionTone('success')
       setBuilderSubmissionMessage(
-        `Downloaded ${result.filename}. Upload that ZIP to your Dropbox or Google Drive request link to send it to Corey.`,
+        `Downloaded ${result.filename}. Corey’s Dropbox upload page opened in a new tab so the client can send that ZIP right away.`,
       )
     } catch (error) {
       setBuilderSubmissionTone('error')
@@ -427,7 +440,7 @@ export function App() {
     setSelectedZipName(file.name)
     setZipSubmissionTone('success')
     setZipSubmissionMessage(
-      `ZIP ready. Send ${file.name} to Corey using your Dropbox, Google Drive, or file request link.`,
+      `ZIP ready. Upload ${file.name} using Corey’s Dropbox request link.`,
     )
   }
 
@@ -444,6 +457,7 @@ export function App() {
             statusTone={zipSubmissionTone}
             onBack={() => navigateToPage('welcome')}
             onOpenFilePicker={() => zipInputRef.current?.click()}
+            onOpenUploadLink={openClientUploadRequest}
             onDropFiles={handleZipFiles}
             onDragActiveChange={setZipDragActive}
           />
@@ -495,12 +509,21 @@ export function App() {
               {isBuilderSubmitting ? 'Downloading Media Package…' : 'Download Media Package'}
             </button>
 
+            <button
+              type="button"
+              className="hero-submit-button hero-submit-button--secondary"
+              onClick={openClientUploadRequest}
+            >
+              Open Dropbox Upload
+            </button>
+
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">
               <span className="hero-upload-guidance__eyebrow">Upload Specs</span>
               <p>
                 Videos work best as H.264 MP4 at 1920 x 1080. Use 2400 x 1080 for the stage video wall.
                 JPEG and PNG images work too.
               </p>
+              <p>After download, upload the ZIP to Corey using the Dropbox link above.</p>
             </section>
 
             {builderSubmissionMessage ? (

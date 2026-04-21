@@ -1,4 +1,10 @@
-import { buildStoragePath, getSupabaseAdminClient, parseJsonBody, uploadBucket } from './_shared.js'
+import {
+  buildStoragePath,
+  ensureUploadBucketSettings,
+  getSupabaseAdminClient,
+  parseJsonBody,
+  uploadBucket,
+} from './_shared.js'
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
@@ -12,6 +18,8 @@ export default async function handler(request, response) {
     if (!filename || !submissionType) {
       return response.status(400).json({ error: 'filename and submissionType are required.' })
     }
+
+    await ensureUploadBucketSettings()
 
     const storagePath = buildStoragePath(submissionType, filename)
     const supabase = getSupabaseAdminClient()

@@ -1,4 +1,5 @@
 import {
+  getRequestOrigin,
   getSupabaseAdminClient,
   parseJsonBody,
   sendSubmissionEmail,
@@ -29,25 +30,6 @@ export default async function handler(request, response) {
     }
 
     const supabase = getSupabaseAdminClient()
-    const signedUrlResult = await supabase.storage
-      .from(uploadBucket)
-      .createSignedUrl(storagePath, 60 * 60 * 24 * 7)
-
-    if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
-      return response.status(500).json({
-        error: signedUrlResult.error?.message || 'Could not create the download link.',
-      })
-    }
-
-    const emailResult = await sendSubmissionEmail({
-      projectName,
-      submissionType,
-      originalFilename: filename,
-      fileSizeBytes,
-      includedVenues,
-      downloadUrl: signedUrlResult.data.signedUrl,
-    })
-
     const insertResult = await supabase
       .from('mockup_submissions')
       .insert({
@@ -70,8 +52,26 @@ export default async function handler(request, response) {
       })
     }
 
+    const submissionId = insertResult.data?.id ?? null
+    const downloadUrl = `${getRequestOrigin(request)}/api/submissions/download?submissionId=${submissionId}`
+    const emailResult = await sendSubmissionEmail({
+      projectName,
+      submissionType,
+      originalFilename: filename,
+      fileSizeBytes,
+      includedVenues,
+      downloadUrl,
+    })
+
+    if (submissionId) {
+      await supabase
+        .from('mockup_submissions')
+        .update({ email_sent: emailResult.emailSent })
+        .eq('id', submissionId)
+    }
+
     return response.status(200).json({
-      submissionId: insertResult.data?.id ?? null,
+      submissionId,
       emailSent: emailResult.emailSent,
       warning: emailResult.warning,
     })

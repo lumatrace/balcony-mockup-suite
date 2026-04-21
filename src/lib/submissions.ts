@@ -1,4 +1,3 @@
-import JSZip from 'jszip'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectSnapshot } from './projectStorage'
 
@@ -10,6 +9,7 @@ const builderVenueDefinitions = [
 ] as const
 
 type BuilderVenueId = (typeof builderVenueDefinitions)[number]['id']
+type UploadSubmissionType = 'builder-asset' | 'builder-manifest' | 'builder' | 'zip-upload'
 type SubmissionType = 'builder' | 'zip-upload'
 
 type SignedUploadPayload = {
@@ -24,10 +24,41 @@ type FinalizeSubmissionResponse = {
   warning?: string
 }
 
-type BuilderArchiveResult = {
-  blob: Blob
+type BuilderManifestMediaRecord = {
+  id: string
   filename: string
+  mimeType: string
+  kind: 'image' | 'video'
+  width: number
+  height: number
+  bytes: number
+  storagePath: string
+}
+
+type BuilderManifestVenueRecord = {
+  id: BuilderVenueId
+  label: string
+  project: unknown
+  media: BuilderManifestMediaRecord[]
+}
+
+type BuilderManifest = {
+  type: 'builder-submission-manifest'
+  version: 1
+  projectName: string
+  createdAt: string
   includedVenues: string[]
+  totalMediaCount: number
+  totalUploadedBytes: number
+  venues: BuilderManifestVenueRecord[]
+}
+
+type BuilderSubmissionPackage = {
+  archiveFilename: string
+  manifestBlob: Blob
+  manifestFilename: string
+  includedVenues: string[]
+  fileSizeBytes: number
   metadata: Record<string, unknown>
 }
 
@@ -37,6 +68,7 @@ type SubmitArchiveOptions = {
   projectName: string
   submissionType: SubmissionType
   includedVenues: string[]
+  fileSizeBytes?: number
   metadata: Record<string, unknown>
 }
 
@@ -74,7 +106,7 @@ function createTimestampSlug() {
   return new Date().toISOString().replace(/[:.]/g, '-')
 }
 
-async function requestSignedUpload(filename: string, submissionType: SubmissionType) {
+async function requestSignedUpload(filename: string, submissionType: UploadSubmissionType) {
   const response = await fetch('/api/submissions/create-upload-url', {
     method: 'POST',
     headers: {
@@ -123,7 +155,11 @@ async function finalizeSubmission(
   } satisfies FinalizeSubmissionResponse
 }
 
-async function uploadArchiveToStorage(blob: Blob, filename: string, submissionType: SubmissionType) {
+async function uploadToStorage(
+  blob: Blob,
+  filename: string,
+  submissionType: UploadSubmissionType,
+) {
   const signedUpload = await requestSignedUpload(filename, submissionType)
   const supabase = getBrowserSupabaseClient()
   const { error } = await supabase.storage
@@ -131,7 +167,7 @@ async function uploadArchiveToStorage(blob: Blob, filename: string, submissionTy
     .uploadToSignedUrl(signedUpload.path, signedUpload.token, blob)
 
   if (error) {
-    throw new Error(error.message || 'The archive could not be uploaded to storage.')
+    throw new Error(error.message || 'The file could not be uploaded to storage.')
   }
 
   return signedUpload.path
@@ -141,11 +177,13 @@ function formatVenueDraftId(venueId: BuilderVenueId) {
   return `__draft__::${venueId}`
 }
 
-export async function createBuilderSubmissionArchive(projectName: string): Promise<BuilderArchiveResult> {
-  const zip = new JSZip()
+export async function createBuilderSubmissionArchive(
+  projectName: string,
+): Promise<BuilderSubmissionPackage> {
   const includedVenues: string[] = []
-  const venueSummaries: Array<Record<string, unknown>> = []
+  const manifestVenues: BuilderManifestVenueRecord[] = []
   let totalMediaCount = 0
+  let totalUploadedBytes = 0
 
   for (const venue of builderVenueDefinitions) {
     const snapshot = await loadProjectSnapshot(formatVenueDraftId(venue.id))
@@ -163,29 +201,32 @@ export async function createBuilderSubmissionArchive(projectName: string): Promi
 
     includedVenues.push(venue.label)
 
-    const venueFolder = zip.folder(`venues/${sanitizeSegment(venue.label)}`)
+    const manifestMedia: BuilderManifestMediaRecord[] = []
 
-    if (!venueFolder) {
-      continue
+    for (const mediaRecord of snapshot.mediaRecords) {
+      totalMediaCount += 1
+      totalUploadedBytes += mediaRecord.blob.size
+
+      const safeFilename = `${mediaRecord.id}-${sanitizeSegment(mediaRecord.filename) || 'asset'}`
+      const storagePath = await uploadToStorage(mediaRecord.blob, safeFilename, 'builder-asset')
+
+      manifestMedia.push({
+        id: mediaRecord.id,
+        filename: mediaRecord.filename,
+        mimeType: mediaRecord.mimeType,
+        kind: mediaRecord.kind,
+        width: mediaRecord.width,
+        height: mediaRecord.height,
+        bytes: mediaRecord.blob.size,
+        storagePath,
+      })
     }
 
-    venueFolder.file('project.json', JSON.stringify(snapshot.project, null, 2))
-
-    snapshot.mediaRecords.forEach((mediaRecord) => {
-      totalMediaCount += 1
-      const safeFilename = `${mediaRecord.id}-${sanitizeSegment(mediaRecord.filename) || 'asset'}`
-      venueFolder.file(`media/${safeFilename}`, mediaRecord.blob)
-    })
-
-    venueSummaries.push({
+    manifestVenues.push({
       id: venue.id,
       label: venue.label,
-      layoutCount: snapshot.project.layouts.length,
-      mediaCount: snapshot.mediaRecords.length,
-      assignmentCount: snapshot.project.layouts.reduce(
-        (count, layout) => count + layout.assignments.length,
-        0,
-      ),
+      project: snapshot.project,
+      media: manifestMedia,
     })
   }
 
@@ -193,46 +234,54 @@ export async function createBuilderSubmissionArchive(projectName: string): Promi
     throw new Error('Add at least one image or video before submitting the mapping package.')
   }
 
-  zip.file(
-    'submission.json',
-    JSON.stringify(
-      {
-        type: 'builder-submission',
-        projectName,
-        createdAt: new Date().toISOString(),
-        includedVenues,
-        totalMediaCount,
-        venues: venueSummaries,
-      },
-      null,
-      2,
-    ),
-  )
+  const archiveFilename = `${sanitizeSegment(projectName) || 'balcony-mockup'}-${createTimestampSlug()}.zip`
+  const manifestFilename = archiveFilename.replace(/\.zip$/i, '.json')
+  const manifest: BuilderManifest = {
+    type: 'builder-submission-manifest',
+    version: 1,
+    projectName,
+    createdAt: new Date().toISOString(),
+    includedVenues,
+    totalMediaCount,
+    totalUploadedBytes,
+    venues: manifestVenues,
+  }
 
-  const blob = await zip.generateAsync({
-    type: 'blob',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
+  const manifestBlob = new Blob([JSON.stringify(manifest, null, 2)], {
+    type: 'application/json',
   })
 
   return {
-    blob,
-    filename: `${sanitizeSegment(projectName) || 'balcony-mockup'}-${createTimestampSlug()}.zip`,
+    archiveFilename,
+    manifestBlob,
+    manifestFilename,
     includedVenues,
+    fileSizeBytes: totalUploadedBytes,
     metadata: {
-      source: 'builder',
+      source: 'builder-manifest',
+      manifestVersion: 1,
       totalMediaCount,
-      venues: venueSummaries,
+      totalUploadedBytes,
+      venues: manifestVenues.map((venue) => ({
+        id: venue.id,
+        label: venue.label,
+        mediaCount: venue.media.length,
+        assignmentCount:
+          (venue.project as { layouts?: Array<{ assignments?: unknown[] }> }).layouts?.reduce(
+            (count, layout) => count + (layout.assignments?.length ?? 0),
+            0,
+          ) ?? 0,
+      })),
     },
   }
 }
 
 export async function submitArchive(options: SubmitArchiveOptions) {
-  const storagePath = await uploadArchiveToStorage(options.blob, options.filename, options.submissionType)
+  const storagePath = await uploadToStorage(options.blob, options.filename, options.submissionType)
 
   return finalizeSubmission({
     storagePath,
-    fileSizeBytes: options.blob.size,
+    fileSizeBytes: options.fileSizeBytes ?? options.blob.size,
     filename: options.filename,
     projectName: options.projectName,
     submissionType: options.submissionType,
@@ -242,12 +291,24 @@ export async function submitArchive(options: SubmitArchiveOptions) {
 }
 
 export async function submitBuilderProject(projectName: string) {
-  const archive = await createBuilderSubmissionArchive(projectName)
+  const submissionPackage = await createBuilderSubmissionArchive(projectName)
+  const manifestPath = await uploadToStorage(
+    submissionPackage.manifestBlob,
+    submissionPackage.manifestFilename,
+    'builder-manifest',
+  )
 
-  return submitArchive({
-    ...archive,
+  return finalizeSubmission({
+    storagePath: manifestPath,
+    fileSizeBytes: submissionPackage.fileSizeBytes,
+    filename: submissionPackage.archiveFilename,
     projectName,
     submissionType: 'builder',
+    includedVenues: submissionPackage.includedVenues,
+    metadata: {
+      ...submissionPackage.metadata,
+      manifestFilename: submissionPackage.manifestFilename,
+    },
   })
 }
 

@@ -3,6 +3,19 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
 export const uploadBucket = process.env.SUPABASE_UPLOAD_BUCKET || 'balcony-submissions'
+export const uploadMimeTypes = [
+  'application/json',
+  'application/zip',
+  'application/x-zip-compressed',
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'video/x-m4v',
+]
 
 function requireServerEnv(key) {
   const value = process.env[key]
@@ -45,6 +58,48 @@ export function buildStoragePath(submissionType, filename) {
   const safeName = sanitizeFileSegment(filename) || 'submission.zip'
 
   return `${submissionType}/${dateSegment}/${randomUUID()}-${safeName}`
+}
+
+export async function ensureUploadBucketSettings() {
+  const supabase = getSupabaseAdminClient()
+  const { data, error } = await supabase.storage.getBucket(uploadBucket)
+
+  if (error || !data) {
+    throw new Error(error?.message || `Could not inspect the ${uploadBucket} bucket.`)
+  }
+
+  const currentMimeTypes = Array.isArray(data.allowed_mime_types)
+    ? data.allowed_mime_types
+    : Array.isArray(data.allowedMimeTypes)
+      ? data.allowedMimeTypes
+      : []
+  const requiresMimeUpdate = uploadMimeTypes.some((mimeType) => !currentMimeTypes.includes(mimeType))
+
+  if (!requiresMimeUpdate) {
+    return
+  }
+
+  const updateResult = await supabase.storage.updateBucket(uploadBucket, {
+    public: false,
+    allowedMimeTypes: [...new Set([...currentMimeTypes, ...uploadMimeTypes])],
+  })
+
+  if (updateResult.error) {
+    throw new Error(updateResult.error.message || `Could not update the ${uploadBucket} bucket settings.`)
+  }
+}
+
+export function getRequestOrigin(request) {
+  const forwardedProto = request.headers['x-forwarded-proto']
+  const forwardedHost = request.headers['x-forwarded-host']
+  const host = forwardedHost || request.headers.host
+  const protocol = forwardedProto || 'https'
+
+  if (!host) {
+    throw new Error('Missing request host header.')
+  }
+
+  return `${protocol}://${host}`
 }
 
 export function formatBytes(bytes) {
@@ -92,7 +147,7 @@ export async function sendSubmissionEmail({
         <p style="margin: 0 0 20px;"><strong>Included venues:</strong> ${venueList}</p>
         <p style="margin: 0 0 20px;">
           <a href="${downloadUrl}" style="display: inline-block; padding: 12px 18px; border-radius: 12px; background: #8e47ff; color: white; text-decoration: none;">
-            Download submission ZIP
+            Download submission package
           </a>
         </p>
       </div>

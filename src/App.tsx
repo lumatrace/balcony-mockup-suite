@@ -509,14 +509,6 @@ export function App() {
               {isBuilderSubmitting ? 'Sending Your Design…' : 'Send Your Design Here'}
             </button>
 
-            <button
-              type="button"
-              className="hero-submit-button hero-submit-button--secondary"
-              onClick={openClientUploadRequest}
-            >
-              Open Dropbox Upload
-            </button>
-
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">
               <span className="hero-upload-guidance__eyebrow">Easy Handoff</span>
               <p>1. Click Download Media Package.</p>

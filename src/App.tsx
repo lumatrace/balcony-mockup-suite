@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
 import type { DragEvent, ReactNode } from 'react'
 import { VenueWorkspace } from './components/VenueWorkspace'
-import { downloadBuilderProjectPackage, submitUploadedZip } from './lib/submissions'
+import { downloadBuilderProjectPackage } from './lib/submissions'
 
 type VenueId = 'bar' | 'entrance' | 'exit' | 'stage'
 type AppPageId = 'welcome' | 'upload' | VenueId
@@ -255,25 +255,21 @@ function WelcomePage({
 function UploadZipPage({
   selectedZipName,
   isDragActive,
-  isSubmitting,
   statusMessage,
   statusTone,
   onBack,
   onOpenFilePicker,
   onDropFiles,
   onDragActiveChange,
-  onSubmitZip,
 }: {
   selectedZipName: string | null
   isDragActive: boolean
-  isSubmitting: boolean
   statusMessage: string | null
   statusTone: 'neutral' | 'success' | 'error'
   onBack: () => void
   onOpenFilePicker: () => void
   onDropFiles: (files: FileList | null) => void
   onDragActiveChange: (active: boolean) => void
-  onSubmitZip: () => void
 }) {
   function handleDrop(event: DragEvent<HTMLButtonElement>) {
     event.preventDefault()
@@ -286,8 +282,8 @@ function UploadZipPage({
     <>
       <BrandHeader
         eyebrow="Concierge Upload"
-        title="Send One ZIP And We’ll Take It From Here"
-        description="Bundle your media, logos, notes, and references into one ZIP file. This path stays out of the builder and keeps the handoff simple."
+        title="Prepare One ZIP For Corey"
+        description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, send that ZIP through your Dropbox, Google Drive, or file request link."
       >
         <button type="button" className="welcome-back-button" onClick={onBack}>
           Back To Welcome
@@ -319,23 +315,12 @@ function UploadZipPage({
           >
             <div className="upload-dropzone__badge">ZIP Upload</div>
             <h2>Drop Your ZIP File Here</h2>
-            <p>One package is all we need to start designing for you.</p>
+            <p>One clean package keeps the handoff simple.</p>
             <span className="upload-dropzone__button">Choose ZIP File</span>
             <small>
               {selectedZipName ? `Ready: ${selectedZipName}` : 'ZIP files only for now'}
             </small>
           </button>
-
-          {selectedZipName ? (
-            <button
-              type="button"
-              className="upload-submit-button"
-              onClick={onSubmitZip}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Submitting ZIP…' : 'Submit ZIP For Design'}
-            </button>
-          ) : null}
 
           {statusMessage ? (
             <p className={`submission-feedback submission-feedback--${statusTone}`}>{statusMessage}</p>
@@ -355,10 +340,8 @@ export function App() {
   const [isBuilderSubmitting, setIsBuilderSubmitting] = useState(false)
   const [builderSubmissionMessage, setBuilderSubmissionMessage] = useState<string | null>(null)
   const [builderSubmissionTone, setBuilderSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
-  const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null)
   const [selectedZipName, setSelectedZipName] = useState<string | null>(null)
   const [zipDragActive, setZipDragActive] = useState(false)
-  const [isZipSubmitting, setIsZipSubmitting] = useState(false)
   const [zipSubmissionMessage, setZipSubmissionMessage] = useState<string | null>(null)
   const [zipSubmissionTone, setZipSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
   const zipInputRef = useRef<HTMLInputElement | null>(null)
@@ -441,35 +424,11 @@ export function App() {
       return
     }
 
-    setSelectedZipFile(file)
     setSelectedZipName(file.name)
-    setZipSubmissionTone('neutral')
-    setZipSubmissionMessage('ZIP ready. Submit it when you are ready for us to take over.')
-  }
-
-  async function handleSubmitZip() {
-    if (!selectedZipFile) {
-      return
-    }
-
-    try {
-      setIsZipSubmitting(true)
-      setZipSubmissionTone('neutral')
-      setZipSubmissionMessage('Uploading your ZIP package now...')
-      const result = await submitUploadedZip(selectedZipFile, `${initialProjectName} concierge upload`)
-
-      setZipSubmissionTone(result.warning ? 'neutral' : 'success')
-      setZipSubmissionMessage(
-        result.warning ?? 'ZIP received. Your files are in and ready for design.',
-      )
-    } catch (error) {
-      setZipSubmissionTone('error')
-      setZipSubmissionMessage(
-        error instanceof Error ? error.message : 'The ZIP package could not be submitted.',
-      )
-    } finally {
-      setIsZipSubmitting(false)
-    }
+    setZipSubmissionTone('success')
+    setZipSubmissionMessage(
+      `ZIP ready. Send ${file.name} to Corey using your Dropbox, Google Drive, or file request link.`,
+    )
   }
 
   if (!isVenuePage(currentPageId)) {
@@ -481,14 +440,12 @@ export function App() {
           <UploadZipPage
             selectedZipName={selectedZipName}
             isDragActive={zipDragActive}
-            isSubmitting={isZipSubmitting}
             statusMessage={zipSubmissionMessage}
             statusTone={zipSubmissionTone}
             onBack={() => navigateToPage('welcome')}
             onOpenFilePicker={() => zipInputRef.current?.click()}
             onDropFiles={handleZipFiles}
             onDragActiveChange={setZipDragActive}
-            onSubmitZip={handleSubmitZip}
           />
         )}
 

@@ -186,6 +186,42 @@ function openClientUploadRequest() {
   window.open(clientUploadRequestUrl, '_blank', 'noopener,noreferrer')
 }
 
+function reserveClientUploadWindow() {
+  const uploadWindow = window.open('', '_blank')
+
+  if (!uploadWindow) {
+    return null
+  }
+
+  try {
+    uploadWindow.document.title = 'Preparing Dropbox Upload'
+    uploadWindow.document.body.innerHTML = `
+      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111116; color: #f5f5f8; min-height: 100vh; display: grid; place-items: center; margin: 0; padding: 24px;">
+        <div style="max-width: 460px; text-align: center;">
+          <p style="letter-spacing: 0.22em; text-transform: uppercase; font-size: 12px; color: #b67dff; margin: 0 0 12px;">The Balcony</p>
+          <h1 style="font-size: 28px; line-height: 1.15; margin: 0 0 12px;">Preparing your Dropbox upload...</h1>
+          <p style="font-size: 15px; line-height: 1.6; margin: 0; color: rgba(245, 245, 248, 0.72);">
+            Leave this tab open for a moment. Your ZIP is being built and this page will continue to Dropbox automatically.
+          </p>
+        </div>
+      </div>
+    `
+  } catch {
+    return uploadWindow
+  }
+
+  return uploadWindow
+}
+
+function continueToClientUploadRequest(uploadWindow: Window | null) {
+  if (uploadWindow && !uploadWindow.closed) {
+    uploadWindow.location.replace(clientUploadRequestUrl)
+    return true
+  }
+
+  return Boolean(window.open(clientUploadRequestUrl, '_blank', 'noopener,noreferrer'))
+}
+
 function WelcomePage({
   onGoUpload,
   onGoDesign,
@@ -360,6 +396,7 @@ export function App() {
   const [isSavingLayout, setIsSavingLayout] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null)
   const [submissionNotes, setSubmissionNotes] = useState('')
+  const [needsManualDropboxOpen, setNeedsManualDropboxOpen] = useState(false)
   const zipInputRef = useRef<HTMLInputElement | null>(null)
   const saveExpectedCountRef = useRef(0)
   const saveAcknowledgedCountRef = useRef(0)
@@ -455,22 +492,31 @@ export function App() {
       return
     }
 
+    const reservedUploadWindow = reserveClientUploadWindow()
+
     try {
       setIsBuilderSubmitting(true)
+      setNeedsManualDropboxOpen(false)
       setBuilderSubmissionTone('neutral')
       setBuilderSubmissionMessage('Building your downloadable package now...')
 
       await new Promise((resolve) => window.setTimeout(resolve, 450))
       const result = await downloadBuilderProjectPackage(initialProjectName, submissionNotes)
-      openClientUploadRequest()
+      const openedUploadWindow = continueToClientUploadRequest(reservedUploadWindow)
 
       setSubmittedPageId(currentPageId)
       setNeedsResubmitPageId(null)
       setBuilderSubmissionTone('success')
       setBuilderSubmissionMessage(
-        `Downloaded ${result.filename}. Corey’s Dropbox upload page opened in a new tab so the client can send that ZIP right away.`,
+        openedUploadWindow
+          ? `Downloaded ${result.filename}. The Dropbox upload page is ready in a new tab so the client can drag it straight from Downloads.`
+          : `Downloaded ${result.filename}. Your browser blocked the Dropbox tab, so use the link below to open it manually.`,
       )
+      setNeedsManualDropboxOpen(!openedUploadWindow)
     } catch (error) {
+      if (reservedUploadWindow && !reservedUploadWindow.closed) {
+        reservedUploadWindow.close()
+      }
       setBuilderSubmissionTone('error')
       setBuilderSubmissionMessage(
         error instanceof Error ? error.message : 'The mapping package could not be downloaded.',
@@ -568,6 +614,16 @@ export function App() {
             {builderSubmissionMessage ? (
               <p className={`submission-feedback submission-feedback--${builderSubmissionTone}`}>
                 {builderSubmissionMessage}
+              </p>
+            ) : null}
+
+            {needsManualDropboxOpen ? (
+              <p className="submission-feedback submission-feedback--neutral">
+                Dropbox didn’t open automatically?{' '}
+                <a href={clientUploadRequestUrl} target="_blank" rel="noreferrer">
+                  Open the upload page here
+                </a>
+                .
               </p>
             ) : null}
           </div>

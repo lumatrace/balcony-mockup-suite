@@ -725,10 +725,6 @@ export function App() {
                   This mockup is the starting point. Because projection behaves differently once it is live in the room,
                   some placements may need to be adjusted after we test the content on site.
                 </p>
-                <p>
-                  For the most cohesive and immersive result, we usually recommend carrying the same image or video
-                  language across the wall surfaces instead of treating each one as a completely separate moment.
-                </p>
               </div>
             </div>
 

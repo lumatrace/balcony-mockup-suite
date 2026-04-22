@@ -326,7 +326,7 @@ function UploadZipPage({
       <BrandHeader
         eyebrow="Concierge Upload"
         title="Prepare One ZIP For Corey"
-        description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, upload that ZIP through Corey’s Dropbox request link."
+        description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, upload that ZIP through the Dropbox request link."
       >
         <div className="welcome-inline-actions">
           <button type="button" className="welcome-back-button" onClick={onOpenUploadLink}>
@@ -509,8 +509,8 @@ export function App() {
       setBuilderSubmissionTone('success')
       setBuilderSubmissionMessage(
         openedUploadWindow
-          ? `Downloaded ${result.filename}. The Dropbox upload page is ready in a new tab so the client can drag it straight from Downloads.`
-          : `Downloaded ${result.filename}. Your browser blocked the Dropbox tab, so use the link below to open it manually.`,
+          ? `Downloaded ${result.filename}. Final step: drag that ZIP from Downloads into the Dropbox tab to actually send it.`
+          : `Downloaded ${result.filename}. Your browser blocked the Dropbox tab, so use the link below to open it manually and upload the ZIP from Downloads.`,
       )
       setNeedsManualDropboxOpen(!openedUploadWindow)
     } catch (error) {
@@ -602,13 +602,14 @@ export function App() {
               onClick={handleSubmitPage}
               aria-label="Send your design here."
             >
-              {isBuilderSubmitting ? 'Sending Your Design…' : 'Send Your Design Here'}
+              {isBuilderSubmitting ? 'Preparing Your ZIP…' : 'Prepare ZIP For Dropbox'}
             </button>
 
             <section className="hero-upload-guidance" aria-label="Recommended upload formats">
               <span className="hero-upload-guidance__eyebrow">Easy Handoff</span>
               <p>Click the purple button above.</p>
-              <p>We’ll automatically zip your files, relabel them for you, and open the Dropbox window for drag and drop from Downloads.</p>
+              <p>We’ll zip and relabel everything for you, then open Dropbox.</p>
+              <p>Final step: drag the ZIP from Downloads into Dropbox to send it.</p>
             </section>
 
             {builderSubmissionMessage ? (
@@ -623,7 +624,7 @@ export function App() {
                 <a href={clientUploadRequestUrl} target="_blank" rel="noreferrer">
                   Open the upload page here
                 </a>
-                .
+                , then upload the ZIP from Downloads.
               </p>
             ) : null}
           </div>
@@ -717,7 +718,7 @@ export function App() {
               <p className="eyebrow">Final Handoff</p>
               <h2>One Last Step</h2>
               <p>
-                Add any notes here, then use the button below to send the full package.
+                Add any notes here, then use the button below to prepare the ZIP and upload it through Dropbox.
               </p>
             </div>
 
@@ -736,7 +737,7 @@ export function App() {
               disabled={isBuilderSubmitting}
               onClick={handleSubmitPage}
             >
-              {isBuilderSubmitting ? 'Sending Your Design…' : 'Send Your Design Here'}
+              {isBuilderSubmitting ? 'Preparing Your ZIP…' : 'Prepare ZIP For Dropbox'}
             </button>
           </section>
         </>

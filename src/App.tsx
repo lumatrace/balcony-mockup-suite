@@ -720,6 +720,16 @@ export function App() {
               <p>
                 Add any notes here, then use the button below to prepare the ZIP and upload it through Dropbox.
               </p>
+              <div className="bottom-handoff-card__guidance">
+                <p>
+                  This mockup is the starting point. Because projection behaves differently once it is live in the room,
+                  some placements may need to be adjusted after we test the content on site.
+                </p>
+                <p>
+                  For the most cohesive and immersive result, we usually recommend carrying the same image or video
+                  language across the wall surfaces instead of treating each one as a completely separate moment.
+                </p>
+              </div>
             </div>
 
             <label className="bottom-handoff-card__notes">

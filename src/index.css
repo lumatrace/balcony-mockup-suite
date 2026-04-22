@@ -512,6 +512,23 @@ button {
   max-width: 720px;
 }
 
+.bottom-handoff-card__guidance {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  max-width: 860px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bottom-handoff-card__guidance p {
+  margin: 0;
+  color: var(--copy-soft);
+  line-height: 1.6;
+}
+
 .bottom-handoff-card__notes {
   display: grid;
   gap: 10px;

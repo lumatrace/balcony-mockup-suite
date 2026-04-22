@@ -661,12 +661,12 @@ export function App() {
               <p className="eyebrow">Final Handoff</p>
               <h2>One Last Step</h2>
               <p>
-                Add any notes for Corey here, then use the button below to send the full package.
+                Add any notes here, then use the button below to send the full package.
               </p>
             </div>
 
             <label className="bottom-handoff-card__notes">
-              <span>Notes For Corey</span>
+              <span>Notes</span>
               <textarea
                 value={submissionNotes}
                 onChange={(event) => setSubmissionNotes(event.target.value)}

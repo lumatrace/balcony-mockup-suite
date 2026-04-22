@@ -316,7 +316,7 @@ function UploadZipPage({
   onDropFiles: (files: FileList | null) => void
   onDragActiveChange: (active: boolean) => void
 }) {
-  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     event.stopPropagation()
     onDragActiveChange(false)
@@ -342,10 +342,8 @@ function UploadZipPage({
 
       <section className="upload-shell">
         <div className="upload-shell__stack">
-          <button
-            type="button"
+          <div
             className={`upload-dropzone ${isDragActive ? 'is-drag-active' : ''}`}
-            onClick={onOpenFilePicker}
             onDragEnter={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -362,15 +360,30 @@ function UploadZipPage({
               onDragActiveChange(false)
             }}
             onDrop={handleDrop}
+            role="region"
+            aria-label="ZIP upload handoff"
           >
             <div className="upload-dropzone__badge">ZIP Upload</div>
             <h2>Drop Your ZIP File Here</h2>
             <p>One clean package keeps the handoff simple.</p>
-            <span className="upload-dropzone__button">Choose ZIP File</span>
+            <div className="upload-dropzone__actions">
+              <button type="button" className="upload-dropzone__button" onClick={onOpenFilePicker}>
+                <span className="upload-dropzone__step">1</span>
+                <span>Choose ZIP File</span>
+              </button>
+              <button
+                type="button"
+                className="upload-dropzone__button upload-dropzone__button--secondary"
+                onClick={onOpenUploadLink}
+              >
+                <span className="upload-dropzone__step">2</span>
+                <span>Open Dropbox Upload Now</span>
+              </button>
+            </div>
             <small>
               {selectedZipName ? `Ready: ${selectedZipName}` : 'ZIP files only for now'}
             </small>
-          </button>
+          </div>
 
           {statusMessage ? (
             <p className={`submission-feedback submission-feedback--${statusTone}`}>{statusMessage}</p>

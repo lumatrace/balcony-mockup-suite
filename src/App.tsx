@@ -298,6 +298,7 @@ function UploadZipPage({
   isDragActive,
   statusMessage,
   statusTone,
+  needsManualDropboxOpen,
   onBack,
   onOpenFilePicker,
   onOpenUploadLink,
@@ -308,6 +309,7 @@ function UploadZipPage({
   isDragActive: boolean
   statusMessage: string | null
   statusTone: 'neutral' | 'success' | 'error'
+  needsManualDropboxOpen: boolean
   onBack: () => void
   onOpenFilePicker: () => void
   onOpenUploadLink: () => void
@@ -373,6 +375,16 @@ function UploadZipPage({
           {statusMessage ? (
             <p className={`submission-feedback submission-feedback--${statusTone}`}>{statusMessage}</p>
           ) : null}
+
+          {needsManualDropboxOpen ? (
+            <p className="submission-feedback submission-feedback--neutral">
+              Dropbox didn’t open automatically?{' '}
+              <a href={clientUploadRequestUrl} target="_blank" rel="noreferrer">
+                Open the upload page here
+              </a>
+              , then upload the ZIP from Downloads.
+            </p>
+          ) : null}
         </div>
       </section>
     </>
@@ -392,6 +404,7 @@ export function App() {
   const [zipDragActive, setZipDragActive] = useState(false)
   const [zipSubmissionMessage, setZipSubmissionMessage] = useState<string | null>(null)
   const [zipSubmissionTone, setZipSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
+  const [needsManualZipDropboxOpen, setNeedsManualZipDropboxOpen] = useState(false)
   const [saveRequestId, setSaveRequestId] = useState(0)
   const [isSavingLayout, setIsSavingLayout] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null)
@@ -533,10 +546,16 @@ export function App() {
       return
     }
 
+    const reservedUploadWindow = reserveClientUploadWindow()
+    const openedUploadWindow = continueToClientUploadRequest(reservedUploadWindow)
+
     setSelectedZipName(file.name)
     setZipSubmissionTone('success')
+    setNeedsManualZipDropboxOpen(!openedUploadWindow)
     setZipSubmissionMessage(
-      `ZIP ready. Upload ${file.name} using Corey’s Dropbox request link.`,
+      openedUploadWindow
+        ? `ZIP ready. Final step: upload ${file.name} in the Dropbox tab that just opened.`
+        : `ZIP ready. Your browser blocked the Dropbox tab, so use the link below and upload ${file.name} from Downloads.`,
     )
   }
 
@@ -551,6 +570,7 @@ export function App() {
             isDragActive={zipDragActive}
             statusMessage={zipSubmissionMessage}
             statusTone={zipSubmissionTone}
+            needsManualDropboxOpen={needsManualZipDropboxOpen}
             onBack={() => navigateToPage('welcome')}
             onOpenFilePicker={() => zipInputRef.current?.click()}
             onOpenUploadLink={openClientUploadRequest}

@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useRef, useState } from 'react'
-import type { DragEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { VenueWorkspace } from './components/VenueWorkspace'
 import { downloadBuilderProjectPackage } from './lib/submissions'
 
@@ -135,16 +135,6 @@ function getDocumentTitle(pageId: AppPageId) {
   }
 
   return `${getVenuePage(pageId).label} | The Balcony Mockup Suite`
-}
-
-function isZipFile(file: File) {
-  const lowercaseName = file.name.toLowerCase()
-
-  return (
-    lowercaseName.endsWith('.zip') ||
-    file.type === 'application/zip' ||
-    file.type === 'application/x-zip-compressed'
-  )
 }
 
 function BrandHeader({
@@ -294,35 +284,12 @@ function WelcomePage({
 }
 
 function UploadZipPage({
-  selectedZipName,
-  isDragActive,
-  statusMessage,
-  statusTone,
-  needsManualDropboxOpen,
   onBack,
-  onOpenFilePicker,
   onOpenUploadLink,
-  onDropFiles,
-  onDragActiveChange,
 }: {
-  selectedZipName: string | null
-  isDragActive: boolean
-  statusMessage: string | null
-  statusTone: 'neutral' | 'success' | 'error'
-  needsManualDropboxOpen: boolean
   onBack: () => void
-  onOpenFilePicker: () => void
   onOpenUploadLink: () => void
-  onDropFiles: (files: FileList | null) => void
-  onDragActiveChange: (active: boolean) => void
 }) {
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault()
-    event.stopPropagation()
-    onDragActiveChange(false)
-    onDropFiles(event.dataTransfer.files)
-  }
-
   return (
     <>
       <BrandHeader
@@ -331,9 +298,6 @@ function UploadZipPage({
         description="Bundle your media, logos, notes, and references into one ZIP file. Once it is ready, upload that ZIP through the Dropbox request link."
       >
         <div className="welcome-inline-actions">
-          <button type="button" className="welcome-back-button" onClick={onOpenUploadLink}>
-            Open Dropbox Upload
-          </button>
           <button type="button" className="welcome-back-button welcome-back-button--ghost" onClick={onBack}>
             Back To Welcome
           </button>
@@ -342,70 +306,21 @@ function UploadZipPage({
 
       <section className="upload-shell">
         <div className="upload-shell__stack">
-          <div
-            className={`upload-dropzone ${isDragActive ? 'is-drag-active' : ''}`}
-            onDragEnter={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onDragActiveChange(true)
-            }}
-            onDragOver={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onDragActiveChange(true)
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onDragActiveChange(false)
-            }}
-            onDrop={handleDrop}
-            role="region"
-            aria-label="ZIP upload handoff"
-          >
+          <div className="upload-dropzone" role="region" aria-label="ZIP upload handoff">
             <div className="upload-dropzone__badge">ZIP Upload</div>
-            <h2>Drop Your ZIP File Here</h2>
-            <p>One clean package keeps the handoff simple.</p>
+            <h2>Upload Your ZIP File</h2>
+            <p>Zip your files first, then click below to open the Dropbox upload window.</p>
             <div className="upload-dropzone__actions">
-              <button type="button" className="upload-dropzone__button" onClick={onOpenFilePicker}>
-                <span className="upload-dropzone__step">1</span>
-                <span>Choose ZIP File</span>
-              </button>
               <button
                 type="button"
-                className="upload-dropzone__button upload-dropzone__button--secondary"
+                className="upload-dropzone__button"
                 onClick={onOpenUploadLink}
               >
-                <span className="upload-dropzone__step">2</span>
-                <span>Open Dropbox Upload Now</span>
+                <span>Upload Now</span>
               </button>
             </div>
-            <small>
-              {selectedZipName ? `Ready: ${selectedZipName}` : 'ZIP files only for now'}
-            </small>
+            <small>Dropbox will open in a new tab.</small>
           </div>
-
-          {statusMessage ? (
-            <p className={`submission-feedback submission-feedback--${statusTone}`}>{statusMessage}</p>
-          ) : null}
-
-          {needsManualDropboxOpen ? (
-            <div className="manual-upload-callout">
-              <p className="submission-feedback submission-feedback--error">
-                Your ZIP is ready, but it has not been uploaded yet.
-              </p>
-              <button
-                type="button"
-                className="hero-submit-button manual-upload-callout__button"
-                onClick={onOpenUploadLink}
-              >
-                Open Dropbox Upload Now
-              </button>
-              <p className="submission-feedback submission-feedback--neutral">
-                Final step: drag the ZIP from Downloads into Dropbox to finish sending it.
-              </p>
-            </div>
-          ) : null}
         </div>
       </section>
     </>
@@ -421,17 +336,11 @@ export function App() {
   const [isBuilderSubmitting, setIsBuilderSubmitting] = useState(false)
   const [builderSubmissionMessage, setBuilderSubmissionMessage] = useState<string | null>(null)
   const [builderSubmissionTone, setBuilderSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
-  const [selectedZipName, setSelectedZipName] = useState<string | null>(null)
-  const [zipDragActive, setZipDragActive] = useState(false)
-  const [zipSubmissionMessage, setZipSubmissionMessage] = useState<string | null>(null)
-  const [zipSubmissionTone, setZipSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
-  const [needsManualZipDropboxOpen, setNeedsManualZipDropboxOpen] = useState(false)
   const [saveRequestId, setSaveRequestId] = useState(0)
   const [isSavingLayout, setIsSavingLayout] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null)
   const [submissionNotes, setSubmissionNotes] = useState('')
   const [needsManualDropboxOpen, setNeedsManualDropboxOpen] = useState(false)
-  const zipInputRef = useRef<HTMLInputElement | null>(null)
   const saveExpectedCountRef = useRef(0)
   const saveAcknowledgedCountRef = useRef(0)
   const saveErrorSeenRef = useRef(false)
@@ -560,26 +469,6 @@ export function App() {
     }
   }
 
-  function handleZipFiles(files: FileList | null) {
-    const file = files?.[0]
-
-    if (!file || !isZipFile(file)) {
-      return
-    }
-
-    const reservedUploadWindow = reserveClientUploadWindow()
-    const openedUploadWindow = continueToClientUploadRequest(reservedUploadWindow)
-
-    setSelectedZipName(file.name)
-    setZipSubmissionTone('success')
-    setNeedsManualZipDropboxOpen(!openedUploadWindow)
-    setZipSubmissionMessage(
-      openedUploadWindow
-        ? `ZIP ready. Final step: upload ${file.name} in the Dropbox tab that just opened.`
-        : `ZIP ready. Your browser blocked the Dropbox tab.`,
-    )
-  }
-
   if (!isVenuePage(currentPageId)) {
     return (
       <main className="app-shell app-shell--welcome">
@@ -587,29 +476,10 @@ export function App() {
           <WelcomePage onGoUpload={() => navigateToPage('upload')} onGoDesign={() => navigateToVenue('bar')} />
         ) : (
           <UploadZipPage
-            selectedZipName={selectedZipName}
-            isDragActive={zipDragActive}
-            statusMessage={zipSubmissionMessage}
-            statusTone={zipSubmissionTone}
-            needsManualDropboxOpen={needsManualZipDropboxOpen}
             onBack={() => navigateToPage('welcome')}
-            onOpenFilePicker={() => zipInputRef.current?.click()}
             onOpenUploadLink={openClientUploadRequest}
-            onDropFiles={handleZipFiles}
-            onDragActiveChange={setZipDragActive}
           />
         )}
-
-        <input
-          ref={zipInputRef}
-          className="hidden-input"
-          type="file"
-          accept=".zip,application/zip,application/x-zip-compressed"
-          onChange={(event) => {
-            handleZipFiles(event.target.files)
-            event.target.value = ''
-          }}
-        />
       </main>
     )
   }

@@ -1637,6 +1637,7 @@ button {
   min-height: 420px;
   padding: 34px 28px;
   text-align: center;
+  justify-items: center;
 }
 
 .upload-dropzone.is-drag-active {

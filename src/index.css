@@ -1421,12 +1421,22 @@ button {
 
 .brand-hero--welcome .brand-hero__content--single {
   grid-template-columns: minmax(0, 1fr);
+  padding: 8px;
 }
 
 .brand-lockup-frame--welcome {
   width: 100%;
-  max-width: 1320px;
+  max-width: 1180px;
   justify-self: center;
+}
+
+.brand-hero--welcome .brand-lockup-capsule {
+  padding: 8px;
+  border-radius: 26px;
+}
+
+.brand-hero--welcome .brand-lockup {
+  border-radius: 18px;
 }
 
 .welcome-sidebar-card {

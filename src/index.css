@@ -485,6 +485,67 @@ button {
   gap: 18px;
 }
 
+.bottom-handoff-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(15, 15, 22, 0.86), rgba(7, 7, 11, 0.92)),
+    rgba(12, 12, 18, 0.72);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+.bottom-handoff-card__copy {
+  display: grid;
+  gap: 8px;
+}
+
+.bottom-handoff-card__copy h2,
+.bottom-handoff-card__copy p {
+  margin: 0;
+}
+
+.bottom-handoff-card__copy > p:last-child {
+  color: var(--copy-soft);
+  max-width: 720px;
+}
+
+.bottom-handoff-card__notes {
+  display: grid;
+  gap: 10px;
+}
+
+.bottom-handoff-card__notes span {
+  color: var(--copy-soft);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bottom-handoff-card__notes textarea {
+  min-height: 140px;
+  width: 100%;
+  resize: vertical;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f7f3ee;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.bottom-handoff-card__notes textarea::placeholder {
+  color: var(--copy-muted);
+}
+
+.bottom-handoff-card__button {
+  max-width: 360px;
+}
+
 .workspace-section__heading {
   display: grid;
   gap: 6px;

@@ -190,7 +190,7 @@ function formatVenueDraftId(venueId: BuilderVenueId) {
   return `__draft__::${venueId}`
 }
 
-async function createLocalBuilderZip(projectName: string) {
+async function createLocalBuilderZip(projectName: string, notes?: string) {
   const zip = new JSZip()
   const includedVenues: string[] = []
   const venueSummaries: Array<Record<string, unknown>> = []
@@ -326,6 +326,12 @@ async function createLocalBuilderZip(projectName: string) {
     ),
   )
 
+  const trimmedNotes = notes?.trim()
+
+  if (trimmedNotes) {
+    zip.file('notes.txt', trimmedNotes)
+  }
+
   const blob = await zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
@@ -451,8 +457,8 @@ export async function createBuilderSubmissionArchive(
   }
 }
 
-export async function downloadBuilderProjectPackage(projectName: string) {
-  const archive = await createLocalBuilderZip(projectName)
+export async function downloadBuilderProjectPackage(projectName: string, notes?: string) {
+  const archive = await createLocalBuilderZip(projectName, notes)
   triggerBrowserDownload(archive.blob, archive.filename)
 
   return {

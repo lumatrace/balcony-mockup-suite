@@ -359,6 +359,7 @@ export function App() {
   const [saveRequestId, setSaveRequestId] = useState(0)
   const [isSavingLayout, setIsSavingLayout] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null)
+  const [submissionNotes, setSubmissionNotes] = useState('')
   const zipInputRef = useRef<HTMLInputElement | null>(null)
   const saveExpectedCountRef = useRef(0)
   const saveAcknowledgedCountRef = useRef(0)
@@ -460,7 +461,7 @@ export function App() {
       setBuilderSubmissionMessage('Building your downloadable package now...')
 
       await new Promise((resolve) => window.setTimeout(resolve, 450))
-      const result = await downloadBuilderProjectPackage(initialProjectName)
+      const result = await downloadBuilderProjectPackage(initialProjectName, submissionNotes)
       openClientUploadRequest()
 
       setSubmittedPageId(currentPageId)
@@ -653,6 +654,34 @@ export function App() {
               saveRequestId={saveRequestId}
               onSaveAcknowledged={handleSaveAcknowledged}
             />
+          </section>
+
+          <section className="bottom-handoff-card">
+            <div className="bottom-handoff-card__copy">
+              <p className="eyebrow">Final Handoff</p>
+              <h2>One Last Step</h2>
+              <p>
+                Add any notes for Corey here, then use the button below to send the full package.
+              </p>
+            </div>
+
+            <label className="bottom-handoff-card__notes">
+              <span>Notes For Corey</span>
+              <textarea
+                value={submissionNotes}
+                onChange={(event) => setSubmissionNotes(event.target.value)}
+                placeholder="Anything we should know about your content, timing, or placement?"
+              />
+            </label>
+
+            <button
+              type="button"
+              className="hero-submit-button bottom-handoff-card__button"
+              disabled={isBuilderSubmitting}
+              onClick={handleSubmitPage}
+            >
+              {isBuilderSubmitting ? 'Sending Your Design…' : 'Send Your Design Here'}
+            </button>
           </section>
         </>
       ) : currentPageId === 'entrance' ? (

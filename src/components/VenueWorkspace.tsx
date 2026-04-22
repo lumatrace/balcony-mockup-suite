@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { ProjectSidebar } from './ProjectSidebar'
 import { StageView } from './StageView'
-import { importMediaFile, releaseMediaAssets } from '../lib/media'
-import { saveProjectSnapshot } from '../lib/projectStorage'
+import { hydrateMediaRecords, importMediaFile, releaseMediaAssets } from '../lib/media'
+import { loadProjectSnapshot, saveProjectSnapshot } from '../lib/projectStorage'
 import { loadVenueAssetManifest } from '../lib/venueAssets'
 import type {
   LayoutId,
@@ -22,6 +22,11 @@ type VenueWorkspaceProps = {
   venueId: LiveVenueId
   projectName: string
   onDirty: () => void
+  onSaveLayout: () => void
+  isSavingLayout: boolean
+  saveStatusMessage: string | null
+  saveRequestId: number
+  onSaveAcknowledged: (venueId: LiveVenueId, errorMessage?: string) => void
 }
 
 const lockedSlatStrokeWidth = 6
@@ -126,7 +131,16 @@ function createProjectPayload(
   }
 }
 
-export function VenueWorkspace({ venueId, projectName, onDirty }: VenueWorkspaceProps) {
+export function VenueWorkspace({
+  venueId,
+  projectName,
+  onDirty,
+  onSaveLayout,
+  isSavingLayout,
+  saveStatusMessage,
+  saveRequestId,
+  onSaveAcknowledged,
+}: VenueWorkspaceProps) {
   const [manifest, setManifest] = useState<VenueAssetManifest | null>(null)
   const [layouts, setLayouts] = useState<LayoutState[]>([])
   const [mediaAssets, setMediaAssets] = useState<RuntimeMediaAsset[]>([])
@@ -138,6 +152,7 @@ export function VenueWorkspace({ venueId, projectName, onDirty }: VenueWorkspace
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingSurfaceIdRef = useRef<SurfaceId>('center')
   const mediaAssetsRef = useRef<RuntimeMediaAsset[]>([])
+  const handledSaveRequestIdRef = useRef(0)
 
   useEffect(() => {
     mediaAssetsRef.current = mediaAssets
@@ -164,19 +179,39 @@ export function VenueWorkspace({ venueId, projectName, onDirty }: VenueWorkspace
     async function initialize() {
       try {
         const loadedManifest = await loadVenueAssetManifest(venueId)
+        const loadedDraft = await loadProjectSnapshot(`__draft__::${venueId}`)
 
         if (isCancelled) {
           return
         }
 
         setManifest(loadedManifest)
-        setLayouts(
-          layoutDefinitions.map((layout) =>
-            createDefaultLayout(layout.id, layout.label, loadedManifest.defaultSelectedSurfaceId),
-          ),
-        )
-        pendingSurfaceIdRef.current = loadedManifest.defaultSelectedSurfaceId
-        setStatusMessage('Ready')
+        if (loadedDraft) {
+          const hydratedMediaAssets = hydrateMediaRecords(loadedDraft.mediaRecords)
+          setMediaAssets(hydratedMediaAssets)
+          setLayouts(
+            loadedDraft.project.layouts.length > 0
+              ? loadedDraft.project.layouts.map((layout) => ({
+                  ...layout,
+                  slatStrokeSettings: normalizeSlatStrokeSettings(layout.slatStrokeSettings),
+                }))
+              : layoutDefinitions.map((layout) =>
+                  createDefaultLayout(layout.id, layout.label, loadedManifest.defaultSelectedSurfaceId),
+                ),
+          )
+          pendingSurfaceIdRef.current =
+            loadedDraft.project.layouts.find((layout) => layout.id === loadedDraft.project.activeLayoutId)
+              ?.selectedSurfaceId ?? loadedManifest.defaultSelectedSurfaceId
+          setStatusMessage(`${venueLabel} restored`)
+        } else {
+          setLayouts(
+            layoutDefinitions.map((layout) =>
+              createDefaultLayout(layout.id, layout.label, loadedManifest.defaultSelectedSurfaceId),
+            ),
+          )
+          pendingSurfaceIdRef.current = loadedManifest.defaultSelectedSurfaceId
+          setStatusMessage('Ready')
+        }
       } catch (error) {
         setStatusMessage(
           error instanceof Error ? error.message : 'Could not initialize the Balcony mockup app.',
@@ -218,6 +253,53 @@ export function VenueWorkspace({ venueId, projectName, onDirty }: VenueWorkspace
 
     return () => window.clearTimeout(timeoutId)
   }, [activeLayoutId, isBusy, layouts, manifest, mediaAssets, projectName, venueId])
+
+  useEffect(() => {
+    if (
+      saveRequestId === 0 ||
+      saveRequestId === handledSaveRequestIdRef.current ||
+      !manifest ||
+      isBusy ||
+      layouts.length === 0
+    ) {
+      return
+    }
+
+    handledSaveRequestIdRef.current = saveRequestId
+
+    const payload = createProjectPayload(
+      projectName,
+      manifest,
+      layouts,
+      activeLayoutId,
+      mediaAssets,
+      lockedWallProjectionSettings,
+    )
+
+    void saveProjectSnapshot(payload, mediaAssets, {
+      draft: true,
+      draftId: `__draft__::${venueId}`,
+    })
+      .then(() => {
+        onSaveAcknowledged(venueId)
+      })
+      .catch((error) => {
+        onSaveAcknowledged(
+          venueId,
+          error instanceof Error ? error.message : 'This layout could not be saved.',
+        )
+      })
+  }, [
+    activeLayoutId,
+    isBusy,
+    layouts,
+    manifest,
+    mediaAssets,
+    onSaveAcknowledged,
+    projectName,
+    saveRequestId,
+    venueId,
+  ])
 
   const activeLayout = layouts.find((layout) => layout.id === activeLayoutId) ?? null
   const slatLayoutMode = activeLayout?.slatLayoutMode ?? 'individual'
@@ -418,6 +500,19 @@ export function VenueWorkspace({ venueId, projectName, onDirty }: VenueWorkspace
 
   return (
     <>
+      <div className="workspace-actions">
+        <button
+          type="button"
+          className="workspace-save-button"
+          onClick={onSaveLayout}
+          disabled={isSavingLayout}
+        >
+          {isSavingLayout ? 'Saving Layout…' : 'Save Layout'}
+        </button>
+
+        {saveStatusMessage ? <p className="workspace-save-status">{saveStatusMessage}</p> : null}
+      </div>
+
       <div className="workspace-grid">
         <ProjectSidebar
           surfaces={manifest.surfaces}

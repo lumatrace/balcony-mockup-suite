@@ -356,7 +356,13 @@ export function App() {
   const [zipDragActive, setZipDragActive] = useState(false)
   const [zipSubmissionMessage, setZipSubmissionMessage] = useState<string | null>(null)
   const [zipSubmissionTone, setZipSubmissionTone] = useState<'neutral' | 'success' | 'error'>('neutral')
+  const [saveRequestId, setSaveRequestId] = useState(0)
+  const [isSavingLayout, setIsSavingLayout] = useState(false)
+  const [saveStatusMessage, setSaveStatusMessage] = useState<string | null>(null)
   const zipInputRef = useRef<HTMLInputElement | null>(null)
+  const saveExpectedCountRef = useRef(0)
+  const saveAcknowledgedCountRef = useRef(0)
+  const saveErrorSeenRef = useRef(false)
 
   useEffect(() => {
     function handlePopState() {
@@ -398,6 +404,49 @@ export function App() {
     setSubmittedPageId((current) => (current === currentPageId ? null : current))
     setNeedsResubmitPageId(currentPageId)
     setBuilderSubmissionMessage(null)
+  }
+
+  function getVisibleVenueIds(pageId: AppPageId): VenueId[] {
+    if (pageId === 'bar') {
+      return ['bar', 'entrance', 'exit', 'stage']
+    }
+
+    if (pageId === 'entrance' || pageId === 'exit' || pageId === 'stage') {
+      return [pageId]
+    }
+
+    return []
+  }
+
+  function handleSaveLayout() {
+    const visibleVenueIds = getVisibleVenueIds(currentPageId)
+
+    if (visibleVenueIds.length === 0) {
+      return
+    }
+
+    saveExpectedCountRef.current = visibleVenueIds.length
+    saveAcknowledgedCountRef.current = 0
+    saveErrorSeenRef.current = false
+    setIsSavingLayout(true)
+    setSaveStatusMessage('Saving every angle on this browser...')
+    setSaveRequestId((current) => current + 1)
+  }
+
+  function handleSaveAcknowledged(_venueId: VenueId, errorMessage?: string) {
+    if (errorMessage && !saveErrorSeenRef.current) {
+      saveErrorSeenRef.current = true
+      setIsSavingLayout(false)
+      setSaveStatusMessage(errorMessage)
+      return
+    }
+
+    saveAcknowledgedCountRef.current += 1
+
+    if (saveAcknowledgedCountRef.current >= saveExpectedCountRef.current) {
+      setIsSavingLayout(false)
+      setSaveStatusMessage('Saved. This layout will still be here when you come back on this browser.')
+    }
   }
 
   async function handleSubmitPage() {
@@ -526,7 +575,16 @@ export function App() {
 
       {currentPageId === 'bar' ? (
         <>
-          <VenueWorkspace venueId="bar" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+          <VenueWorkspace
+            venueId="bar"
+            projectName={initialProjectName}
+            onDirty={handleWorkspaceDirty}
+            onSaveLayout={handleSaveLayout}
+            isSavingLayout={isSavingLayout}
+            saveStatusMessage={saveStatusMessage}
+            saveRequestId={saveRequestId}
+            onSaveAcknowledged={handleSaveAcknowledged}
+          />
 
           <section className="angle-divider" aria-label="Second angle divider">
             <div className="angle-divider__line" aria-hidden="true" />
@@ -539,7 +597,16 @@ export function App() {
               <p className="eyebrow">Entrance</p>
               <h2>Entrance</h2>
             </div>
-            <VenueWorkspace venueId="entrance" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+            <VenueWorkspace
+              venueId="entrance"
+              projectName={initialProjectName}
+              onDirty={handleWorkspaceDirty}
+              onSaveLayout={handleSaveLayout}
+              isSavingLayout={isSavingLayout}
+              saveStatusMessage={saveStatusMessage}
+              saveRequestId={saveRequestId}
+              onSaveAcknowledged={handleSaveAcknowledged}
+            />
           </section>
 
           <section className="angle-divider" aria-label="Third angle divider">
@@ -553,7 +620,16 @@ export function App() {
               <p className="eyebrow">South Wall</p>
               <h2>South Wall</h2>
             </div>
-            <VenueWorkspace venueId="exit" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+            <VenueWorkspace
+              venueId="exit"
+              projectName={initialProjectName}
+              onDirty={handleWorkspaceDirty}
+              onSaveLayout={handleSaveLayout}
+              isSavingLayout={isSavingLayout}
+              saveStatusMessage={saveStatusMessage}
+              saveRequestId={saveRequestId}
+              onSaveAcknowledged={handleSaveAcknowledged}
+            />
           </section>
 
           <section className="angle-divider" aria-label="Fourth angle divider">
@@ -567,15 +643,51 @@ export function App() {
               <p className="eyebrow">Stage</p>
               <h2>Stage</h2>
             </div>
-            <VenueWorkspace venueId="stage" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+            <VenueWorkspace
+              venueId="stage"
+              projectName={initialProjectName}
+              onDirty={handleWorkspaceDirty}
+              onSaveLayout={handleSaveLayout}
+              isSavingLayout={isSavingLayout}
+              saveStatusMessage={saveStatusMessage}
+              saveRequestId={saveRequestId}
+              onSaveAcknowledged={handleSaveAcknowledged}
+            />
           </section>
         </>
       ) : currentPageId === 'entrance' ? (
-        <VenueWorkspace venueId="entrance" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+        <VenueWorkspace
+          venueId="entrance"
+          projectName={initialProjectName}
+          onDirty={handleWorkspaceDirty}
+          onSaveLayout={handleSaveLayout}
+          isSavingLayout={isSavingLayout}
+          saveStatusMessage={saveStatusMessage}
+          saveRequestId={saveRequestId}
+          onSaveAcknowledged={handleSaveAcknowledged}
+        />
       ) : currentPageId === 'exit' ? (
-        <VenueWorkspace venueId="exit" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+        <VenueWorkspace
+          venueId="exit"
+          projectName={initialProjectName}
+          onDirty={handleWorkspaceDirty}
+          onSaveLayout={handleSaveLayout}
+          isSavingLayout={isSavingLayout}
+          saveStatusMessage={saveStatusMessage}
+          saveRequestId={saveRequestId}
+          onSaveAcknowledged={handleSaveAcknowledged}
+        />
       ) : (
-        <VenueWorkspace venueId="stage" projectName={initialProjectName} onDirty={handleWorkspaceDirty} />
+        <VenueWorkspace
+          venueId="stage"
+          projectName={initialProjectName}
+          onDirty={handleWorkspaceDirty}
+          onSaveLayout={handleSaveLayout}
+          isSavingLayout={isSavingLayout}
+          saveStatusMessage={saveStatusMessage}
+          saveRequestId={saveRequestId}
+          onSaveAcknowledged={handleSaveAcknowledged}
+        />
       )}
     </main>
   )

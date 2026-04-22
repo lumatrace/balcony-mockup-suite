@@ -309,6 +309,15 @@ button {
   color: rgba(255, 228, 236, 0.94);
 }
 
+.manual-upload-callout {
+  display: grid;
+  gap: 12px;
+}
+
+.manual-upload-callout__button {
+  max-width: 360px;
+}
+
 .eyebrow {
   margin: 0 0 10px;
   color: var(--gold);

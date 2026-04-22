@@ -377,13 +377,21 @@ function UploadZipPage({
           ) : null}
 
           {needsManualDropboxOpen ? (
-            <p className="submission-feedback submission-feedback--neutral">
-              Dropbox didn’t open automatically?{' '}
-              <a href={clientUploadRequestUrl} target="_blank" rel="noreferrer">
-                Open the upload page here
-              </a>
-              , then upload the ZIP from Downloads.
-            </p>
+            <div className="manual-upload-callout">
+              <p className="submission-feedback submission-feedback--error">
+                Your ZIP is ready, but it has not been uploaded yet.
+              </p>
+              <button
+                type="button"
+                className="hero-submit-button manual-upload-callout__button"
+                onClick={onOpenUploadLink}
+              >
+                Open Dropbox Upload Now
+              </button>
+              <p className="submission-feedback submission-feedback--neutral">
+                Final step: drag the ZIP from Downloads into Dropbox to finish sending it.
+              </p>
+            </div>
           ) : null}
         </div>
       </section>
@@ -555,7 +563,7 @@ export function App() {
     setZipSubmissionMessage(
       openedUploadWindow
         ? `ZIP ready. Final step: upload ${file.name} in the Dropbox tab that just opened.`
-        : `ZIP ready. Your browser blocked the Dropbox tab, so use the link below and upload ${file.name} from Downloads.`,
+        : `ZIP ready. Your browser blocked the Dropbox tab.`,
     )
   }
 

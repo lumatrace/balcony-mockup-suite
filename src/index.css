@@ -989,6 +989,7 @@ button {
   display: grid;
   place-items: center;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .slot-preview::after {
@@ -1005,6 +1006,7 @@ button {
   height: 100%;
   object-fit: cover;
   display: block;
+  pointer-events: none;
 }
 
 .slot-empty-mark {
@@ -1356,6 +1358,11 @@ button {
 .surface-overlay--group-capture {
   fill: rgba(255, 255, 255, 0.001);
   stroke: transparent;
+}
+
+.combined-group-feedback,
+.combined-group-overlay {
+  pointer-events: none;
 }
 
 .surface-overlay:focus-visible {

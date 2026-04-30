@@ -266,6 +266,7 @@ function renderDropPrompt(surface: SurfaceDefinition, maskId?: string) {
       clipPath={`url(#clip-${surface.id})`}
       aria-hidden="true"
       mask={maskId ? `url(#${maskId})` : undefined}
+      style={{ pointerEvents: 'none' }}
     >
       <foreignObject
         x={promptAnchor.x - promptWidth / 2}
@@ -328,6 +329,10 @@ export function StageView({
     event.preventDefault()
     event.stopPropagation()
     event.dataTransfer.dropEffect = 'copy'
+  }
+
+  function preventBrowserFileOpen(event: DragEvent<HTMLElement>) {
+    event.preventDefault()
   }
 
   function handleStageDrop(event: DragEvent<HTMLElement>) {
@@ -427,6 +432,9 @@ export function StageView({
     <section className="stage-shell">
       <div
         className="stage-frame"
+        onDragEnterCapture={preventBrowserFileOpen}
+        onDragOverCapture={preventBrowserFileOpen}
+        onDropCapture={preventBrowserFileOpen}
         onDragEnter={handleStageDragOver}
         onDragOver={handleStageDragOver}
         onDrop={handleStageDrop}
@@ -602,7 +610,12 @@ export function StageView({
             }
 
             return (
-              <g key={`group-feedback-${groupedSurface.id}`} className="combined-group-feedback" aria-hidden="true">
+              <g
+                key={`group-feedback-${groupedSurface.id}`}
+                className="combined-group-feedback"
+                aria-hidden="true"
+                style={{ pointerEvents: 'none' }}
+              >
                 <path
                   d={groupedSurface.pathD}
                   fill={
